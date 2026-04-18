@@ -1,0 +1,23 @@
+# Ambiente virtuale
+nlp-env/
+venv/
+.env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# File di sistema Mac
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Log
+*.log
+
+# Dataset grandi
+data/
