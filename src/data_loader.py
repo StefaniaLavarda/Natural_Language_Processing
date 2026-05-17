@@ -11,17 +11,17 @@ import pandas as pd
 
 @dataclass
 class TruthfulQAConfig:
-    data_path: str = "data/raw/TruthfulQA.csv"
-    sample_size: int = 50
-    random_state: int = 42
+    data_path: str
+    sample_size: int
+    random_state: int
 
 
 @dataclass
 class HotpotQAConfig:
-    data_path: str = "data/raw/hotpot_dev_distractor_v1.json"
-    sample_size: int = 25
-    random_state: int = 42
-    max_context_paragraphs: int = 10
+    data_path: str
+    sample_size: int
+    random_state: int
+    max_context_paragraphs: int
 
 
 class TruthfulQADataLoader:

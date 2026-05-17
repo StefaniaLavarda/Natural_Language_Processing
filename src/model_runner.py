@@ -13,9 +13,9 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 @dataclass
 class ModelConfig:
-    model_name: str = "google/flan-t5-base"
-    max_input_tokens: int = 512
-    max_new_tokens: int = 200
+    model_name: str 
+    max_input_tokens: int 
+    max_new_tokens: int 
 
 
 class HuggingFaceModelRunner:

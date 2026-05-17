@@ -31,6 +31,7 @@ from src.prompt_builder import (
 )
 
 from src.model_runner import ModelConfig, HuggingFaceModelRunner
+from src.ollama_model_runner import OllamaModelConfig, OllamaModelRunner
 
 from src.evaluator import (
     BaseEvaluator,
@@ -163,13 +164,28 @@ class Experiment:
         Run the selected language model on all prompts.
         """
 
-        model_config = ModelConfig(
-            model_name=self.config["model"]["model_name"],
-            max_input_tokens=self.config["model"]["max_input_tokens"],
-            max_new_tokens=self.config["model"]["max_new_tokens"],
-        )
+        backend = self.config["model"].get("backend", "huggingface")
+        print(f"Using model backend: {backend}")
+        print(f"Using model name: {self.config['model']['model_name']}")
 
-        self.runner = HuggingFaceModelRunner(model_config)
+        if backend == "ollama":
+            model_config = OllamaModelConfig(
+                model_name=self.config["model"]["model_name"],
+                max_input_tokens=self.config["model"]["max_input_tokens"],
+                max_new_tokens=self.config["model"]["max_new_tokens"],
+                temperature=self.config["model"].get("temperature", 0.0),
+            )
+
+            self.runner = OllamaModelRunner(model_config)
+
+        else:
+            model_config = ModelConfig(
+                model_name=self.config["model"]["model_name"],
+                max_input_tokens=self.config["model"]["max_input_tokens"],
+                max_new_tokens=self.config["model"]["max_new_tokens"],
+            )
+
+            self.runner = HuggingFaceModelRunner(model_config)
 
         self.outputs_df = self.runner.run_dataframe(self.prompts_df)
 
