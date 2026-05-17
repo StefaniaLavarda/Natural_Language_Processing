@@ -21,7 +21,7 @@ class HotpotQAConfig:
     data_path: str = "data/raw/hotpot_dev_distractor_v1.json"
     sample_size: int = 25
     random_state: int = 42
-    max_context_paragraphs: int = 4
+    max_context_paragraphs: int = 10
 
 
 class TruthfulQADataLoader:
@@ -65,9 +65,6 @@ class TruthfulQADataLoader:
         })
 
         return processed_df
-
-    def save_processed(self, df: pd.DataFrame, output_path: str) -> None:
-        df.to_csv(output_path, index=False)
 
 
 class HotpotQADataLoader:
@@ -130,6 +127,3 @@ class HotpotQADataLoader:
         })
 
         return processed_df
-
-    def save_processed(self, df: pd.DataFrame, output_path: str) -> None:
-        df.to_csv(output_path, index=False)
