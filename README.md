@@ -4,8 +4,6 @@
 
 This project investigates how misleading, false, or contradictory information affects the factual accuracy and logical consistency of a Large Language Model (LLM).
 
-The project focuses on reasoning robustness under "truth distortion" scenarios and studies whether models can resist misinformation and maintain coherent reasoning.
-
 ---
 
 ## Research Question
@@ -20,31 +18,36 @@ The project uses two datasets:
 
 ### TruthfulQA
 
-A subset of 50 examples from TruthfulQA is used to evaluate whether language models generate truthful answers instead of reproducing common misconceptions and false beliefs.
+A subset of 25 examples from TruthfulQA is used to test truthfulness and resistance to common false beliefs.
 
 ### HotpotQA
 
-A subset of 25 examples from HotpotQA is used to evaluate multi-hop reasoning under misleading information.
+A subset of 25 examples from HotpotQA is used to test multi-hop reasoning with context and supporting facts.
 
-TruthfulQA focuses on truthfulness and misinformation resistance.
+Raw files must be placed in:
 
-HotpotQA focuses on reasoning under multi-step inference.
+* data/raw/TruthfulQA.csv
+* data/raw/hotpot_dev_distractor_v1.json
 
 ---
 
 ## Model
 
-The experiments use the existing instruction-tuned model:
+The project uses:
 
-`google/flan-t5-base`
+* google/flan-t5-base
 
-The goal is not to train a new model, but to evaluate the behavior of an existing LLM under different reasoning conditions.
+The model is not trained or fine-tuned. It is only evaluated.
+
+The model can be changed in:
+
+* config.yaml
 
 ---
 
 ## Experimental Conditions
 
-Each example is transformed into four prompt conditions:
+Each example is tested in four conditions:
 
 1. **Baseline**  
    Original factual question.
@@ -60,13 +63,63 @@ Each example is transformed into four prompt conditions:
 
 ---
 
-## Reasoning Format
+## Output Format
 
-The model is instructed to generate outputs using:
+The model is asked to answer with:
 
-```text
-Reasoning:
-(step-by-step explanation)
+* Reasoning:
+...
 
-Final Answer:
-(short answer)
+* Final Answer:
+...
+
+This allows analysis of both the reasoning process and the final answer.
+
+---
+
+## Evaluation
+
+The outputs are evaluated using:
+
+- factual accuracy,
+- false premise resistance,
+- logical consistency,
+- reasoning chain presence,
+- belief persistence,
+- circular logic detection,
+- qualitative failure analysis.
+
+---
+
+## Explainability
+
+The project includes:
+
+- probability tracing,
+- attention visualization,
+- qualitative failure analysis.
+
+These help understand where the model deviates from truthful reasoning.
+
+---
+
+## Installation
+
+pip install -r requirements.txt
+
+---
+
+## Run the Experiment
+
+From the project root:
+
+python run_experiment.py
+
+---
+
+## Outputs
+
+The experiment saves results in:
+
+* results/outputs/
+* results/plots/
