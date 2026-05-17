@@ -6,14 +6,16 @@ data:
   truthfulqa_path: "data/raw/TruthfulQA.csv"
   hotpotqa_path: "data/raw/hotpot_dev_distractor_v1.json"
 
-  truthfulqa_sample_size: 25
-  hotpotqa_sample_size: 25
-  hotpotqa_max_context_paragraphs: 8
+  truthfulqa_sample_size: 20
+  hotpotqa_sample_size: 20
+  hotpotqa_max_context_paragraphs: 4
 
 model:
-  model_name: "google/flan-t5-base"
-  max_input_tokens: 512
-  max_new_tokens: 250
+  backend: "ollama"
+  model_name: "llama3.2:3b"
+  max_input_tokens: 2048
+  max_new_tokens: 200
+  temperature: 0.0
 
 outputs:
   processed_dir: "data/processed"
@@ -21,8 +23,8 @@ outputs:
   plots_dir: "results/plots"
 
 analysis:
-  run_probability_tracing: true
-  run_attention_analysis: true
+  run_probability_tracing: false
+  run_attention_analysis: false
   attention_examples_per_group: 1
   attention_max_tokens: 30
 
