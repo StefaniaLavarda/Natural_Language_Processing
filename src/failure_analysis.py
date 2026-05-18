@@ -62,6 +62,8 @@ class FailureAnalyzer:
     def detect_vague_or_evasive(self, row: pd.Series) -> int:
         final_answer = self._normalize(row.get("final_answer", ""))
 
+        # If the evaluator says the answer is factually correct,
+        # do not classify it as vague only because it is short.
         if row.get("factual_accuracy", 0) == 1:
             return 0
 
@@ -72,12 +74,17 @@ class FailureAnalyzer:
             "unknown",
             "unclear",
             "i don't know",
+            "not specified",
+            "not provided",
+            "cannot be determined",
         ]
 
-        too_short = len(final_answer.split()) <= 2
         contains_vague_marker = any(marker in final_answer for marker in vague_markers)
 
-        return int(too_short or contains_vague_marker)
+        # Empty or almost empty wrong answers are vague.
+        too_short_and_wrong = len(final_answer.split()) <= 2
+
+        return int(too_short_and_wrong or contains_vague_marker)
 
     def assign_automatic_failure_type(self, row: pd.Series) -> str:
         """
@@ -135,6 +142,7 @@ class FailureAnalyzer:
             "condition",
             "question",
             "false_premise",
+            "false_answer",
             "reasoning_chain",
             "final_answer",
             "model_answer",

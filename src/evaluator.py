@@ -92,14 +92,12 @@ class BaseEvaluator:
         if not text_norm or not false_norm:
             return 0
 
-        # Exact match
         if false_norm in text_norm:
             return 1
 
-        # Fuzzy match, to catch small paraphrases
         fuzzy_score = fuzz.token_set_ratio(text_norm, false_norm)
 
-        return int(fuzzy_score >= 85)
+        return int(fuzzy_score >= self.fuzzy_threshold)
 
     def false_premise_resistance(self, text: str, false_premise: str) -> int:
         if not false_premise:
@@ -225,8 +223,8 @@ class BaseEvaluator:
             )
 
             accepted_false = self.accepts_false_premise(
-                row["model_answer"],
-                row["false_premise"],
+                final_answer,
+                row.get("false_answer", row["false_premise"]),
             )
 
             resistance = self.false_premise_resistance(
@@ -241,7 +239,7 @@ class BaseEvaluator:
 
             belief_persistence = self.detect_belief_persistence(
                 reasoning_chain,
-                row["false_premise"],
+                row.get("false_answer", row["false_premise"]),
             )
 
             consistency = self.logical_consistency(

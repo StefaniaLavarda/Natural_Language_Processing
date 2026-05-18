@@ -94,6 +94,7 @@ class ResultsVisualizer:
         self,
         summary_df: pd.DataFrame,
         evaluated_df: pd.DataFrame,
+        probability_summary_df: pd.DataFrame = None,
     ) -> None:
         self.plot_metric_by_condition(
             summary_df,
@@ -120,3 +121,9 @@ class ResultsVisualizer:
             evaluated_df,
             "reasoning_failure_types.png",
         )
+
+        if probability_summary_df is not None and not probability_summary_df.empty:
+            self.plot_truthful_preference_rate(
+                probability_summary_df,
+                "truthful_preference_rate.png",
+            )

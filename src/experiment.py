@@ -30,8 +30,7 @@ from src.prompt_builder import (
     HotpotQAPromptBuilder,
 )
 
-from src.model_runner import ModelConfig, HuggingFaceModelRunner
-from src.ollama_model_runner import OllamaModelConfig, OllamaModelRunner
+from src.tinyllama_model_runner import TinyLlamaModelConfig, TinyLlamaModelRunner
 
 from src.evaluator import (
     BaseEvaluator,
@@ -39,8 +38,8 @@ from src.evaluator import (
     HotpotQAEvaluator,
 )
 
+from src.explainability import ProbabilityTracer
 from src.visualization import ResultsVisualizer
-from src.explainability import ProbabilityTracer, AttentionVisualizer
 from src.failure_analysis import FailureAnalyzer
 from src.utils import save_dataframe
 
@@ -158,34 +157,31 @@ class Experiment:
 
         print("Prompt counts:")
         print(self.prompts_df.groupby(["dataset", "condition"]).size())
-
+        
     def run_model(self) -> None:
         """
         Run the selected language model on all prompts.
         """
 
-        backend = self.config["model"].get("backend", "huggingface")
+        backend = self.config["model"].get("backend", "tinyllama")
+
         print(f"Using model backend: {backend}")
         print(f"Using model name: {self.config['model']['model_name']}")
 
-        if backend == "ollama":
-            model_config = OllamaModelConfig(
+        if backend == "tinyllama":
+            model_config = TinyLlamaModelConfig(
                 model_name=self.config["model"]["model_name"],
                 max_input_tokens=self.config["model"]["max_input_tokens"],
                 max_new_tokens=self.config["model"]["max_new_tokens"],
                 temperature=self.config["model"].get("temperature", 0.0),
+                do_sample=self.config["model"].get("do_sample", False),
+                device=self.config["model"].get("device", "auto"),
             )
 
-            self.runner = OllamaModelRunner(model_config)
+            self.runner = TinyLlamaModelRunner(model_config)
 
         else:
-            model_config = ModelConfig(
-                model_name=self.config["model"]["model_name"],
-                max_input_tokens=self.config["model"]["max_input_tokens"],
-                max_new_tokens=self.config["model"]["max_new_tokens"],
-            )
-
-            self.runner = HuggingFaceModelRunner(model_config)
+            raise ValueError(f"Unknown model backend: {backend}")
 
         self.outputs_df = self.runner.run_dataframe(self.prompts_df)
 
@@ -297,22 +293,31 @@ class Experiment:
         self.visualizer.create_all_plots(
             self.summary_df,
             self.evaluated_df,
+            self.probability_summary_df,
         )
 
         print("Main plots created.")
-
-    def run_probability_tracing(self) -> None:
+    
+    def run_explainability(self) -> None:
         """
-        Run probability tracing explainability analysis.
+        Run probability-based explainability for TinyLlama.
+
+        This step compares the model probability assigned to the truthful answer
+        and to the false answer.
         """
 
-        if not self.config["analysis"]["run_probability_tracing"]:
-            print("Probability tracing skipped.")
-            return
+        if self.runner is None:
+            raise ValueError("Model runner is not initialized. Run the model first.")
+
+        if self.evaluated_df is None:
+            raise ValueError("Evaluated outputs are not available. Run evaluation first.")
 
         probability_tracer = ProbabilityTracer(self.runner)
 
-        self.traced_df = probability_tracer.trace_dataframe(self.evaluated_df)
+        self.traced_df = probability_tracer.trace_dataframe(
+            self.evaluated_df,
+            top_k=10,
+        )
 
         self.probability_summary_df = probability_tracer.summarize_probability_tracing(
             self.traced_df
@@ -320,7 +325,7 @@ class Experiment:
 
         save_dataframe(
             self.traced_df,
-            self.outputs_dir / "probability_tracing.csv",
+            self.outputs_dir / "probability_tracing_outputs.csv",
         )
 
         save_dataframe(
@@ -328,60 +333,8 @@ class Experiment:
             self.outputs_dir / "probability_tracing_summary.csv",
         )
 
-        self.visualizer.plot_truthful_preference_rate(
-            self.probability_summary_df,
-            "truthful_preference_rate.png",
-        )
-
         print("Probability tracing completed.")
-
-    def run_attention_analysis(self) -> None:
-        """
-        Run attention analysis for a small set of examples.
-        Saves attention scores and top attended tokens, but does not create heatmaps.
-        """
-
-        if not self.config["analysis"]["run_attention_analysis"]:
-            print("Attention analysis skipped.")
-            return
-
-        attention_visualizer = AttentionVisualizer(self.runner)
-
-        examples_per_group = self.config["analysis"]["attention_examples_per_group"]
-
-        attention_examples = (
-            self.evaluated_df
-            .groupby(["dataset", "condition"])
-            .head(examples_per_group)
-        )
-
-        save_dataframe(
-            attention_examples,
-            self.outputs_dir / "attention_examples.csv",
-        )
-
-        for _, row in attention_examples.iterrows():
-            dataset = row["dataset"]
-            condition = row["condition"]
-            prompt = row["prompt"]
-
-            attention_df = attention_visualizer.attention_to_dataframe(prompt)
-
-            attention_output_path = (
-                self.outputs_dir
-                / f"attention_scores_{dataset}_{condition}.csv"
-            )
-
-            save_dataframe(attention_df, attention_output_path)
-
-            token_attention_df = attention_visualizer.summarize_token_attention(prompt)
-
-            save_dataframe(
-                token_attention_df,
-                self.outputs_dir / f"top_attention_tokens_{dataset}_{condition}.csv",
-            )
-
-        print("Attention analysis completed.")
+        print(self.probability_summary_df)
 
     def run(self) -> None:
         """
@@ -392,9 +345,9 @@ class Experiment:
         self.build_prompts()
         self.run_model()
         self.evaluate()
+        self.run_explainability()
         self.visualize_results()
         self.analyze_failures()
-        self.run_probability_tracing()
-        self.run_attention_analysis()
 
         print("Full experiment completed.")
+        

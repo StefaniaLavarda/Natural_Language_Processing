@@ -6,27 +6,23 @@ data:
   truthfulqa_path: "data/raw/TruthfulQA.csv"
   hotpotqa_path: "data/raw/hotpot_dev_distractor_v1.json"
 
-  truthfulqa_sample_size: 20
-  hotpotqa_sample_size: 20
+  truthfulqa_sample_size: 5
+  hotpotqa_sample_size: 5
   hotpotqa_max_context_paragraphs: 4
 
 model:
-  backend: "ollama"
-  model_name: "llama3.2:3b"
-  max_input_tokens: 2048
-  max_new_tokens: 200
+  backend: "tinyllama"
+  model_name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+  max_input_tokens: 1024
+  max_new_tokens: 120
   temperature: 0.0
+  do_sample: false
+  device: "auto"
 
 outputs:
   processed_dir: "data/processed"
   outputs_dir: "results/outputs"
   plots_dir: "results/plots"
 
-analysis:
-  run_probability_tracing: false
-  run_attention_analysis: false
-  attention_examples_per_group: 1
-  attention_max_tokens: 30
-
 evaluation:
-  fuzzy_threshold: 85
+  fuzzy_threshold: 80
