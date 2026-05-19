@@ -89,6 +89,7 @@ class ResultsVisualizer:
         output_path = self.output_dir / filename
         plt.savefig(output_path)
         plt.close()
+    
 
     def create_all_plots(
         self,
@@ -96,6 +97,13 @@ class ResultsVisualizer:
         evaluated_df: pd.DataFrame,
         probability_summary_df: pd.DataFrame = None,
     ) -> None:
+        self.plot_metric_by_condition(
+            summary_df,
+            "fuzzy_match",
+            "Fuzzy Match by Prompt Condition",
+            "fuzzy_match_by_condition.png",
+        )
+        
         self.plot_metric_by_condition(
             summary_df,
             "factual_accuracy",
