@@ -21,10 +21,9 @@ class BasePromptBuilder:
 
     def _format_reasoning_instruction(self) -> str:
         return (
-            "Write exactly two lines only:\n"
-            "Reasoning: one brief reason.\n"
-            "Final answer: the answer only.\n"
-            "Do not repeat the question. Do not copy these instructions."
+        "Use this output format only:\n"
+        "Reasoning: explain briefly why the answer is correct.\n"
+        "Final answer: give only the answer."
         )
 
 class TruthfulQAPromptBuilder(BasePromptBuilder):

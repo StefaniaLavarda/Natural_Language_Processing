@@ -8,13 +8,13 @@ data:
 
   truthfulqa_sample_size: 25
   hotpotqa_sample_size: 25
-  hotpotqa_max_context_paragraphs: 6
+  hotpotqa_max_context_paragraphs: 4
 
 model:
   backend: "tinyllama"
   model_name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
   max_input_tokens: 1024
-  max_new_tokens: 160
+  max_new_tokens: 100
   temperature: 0.0
   do_sample: false
   device: "auto"
