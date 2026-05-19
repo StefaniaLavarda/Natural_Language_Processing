@@ -1,18 +1,19 @@
 """
-Evaluation module.
+Simple evaluation module.
 
-Module for evaluating factual accuracy, false-premise resistance,
-logical consistency, and reasoning-chain quality.
-
-TruthfulQA and HotpotQA have separate evaluators, but they produce compatible
-evaluation columns for final comparison.
+This module evaluates model answers using:
+1. fuzzy match as a gradual similarity score
+2. factual accuracy as a binary correct/incorrect score
+3. false-premise acceptance
+4. false-premise resistance
+5. simple reasoning quality indicators
 """
 
 from typing import Any, List, Tuple
+import re
 
 import pandas as pd
 from rapidfuzz import fuzz
-
 
 
 class BaseEvaluator:
@@ -20,21 +21,38 @@ class BaseEvaluator:
     Shared evaluation logic.
     """
 
-    def __init__(self, fuzzy_threshold: int = 85):
+    def __init__(self, fuzzy_threshold: int = 80):
         self.fuzzy_threshold = fuzzy_threshold
 
-    def _normalize(self, text: str) -> str:
-        return str(text).lower().strip()
+    def normalize_text(self, text: str) -> str:
+        """
+        Normalize text for answer comparison.
+        """
 
-    def _as_list(self, value: Any) -> List[str]:
+        text = str(text).lower()
+        text = re.sub(r"[^a-z0-9\s]", " ", text)
+        text = re.sub(r"\s+", " ", text)
+
+        return text.strip()
+
+    def as_list(self, value: Any) -> List[str]:
+        """
+        Convert a value to a list.
+        """
+
         if isinstance(value, list):
             return value
+
         if isinstance(value, str):
             return [value]
+
         return []
 
     def split_reasoning_and_final_answer(self, model_answer: str) -> Tuple[str, str]:
-        # Inspired by L6.0-prompt-engineering.ipynb: structured prompt output parsing
+        """
+        Split the model output into reasoning and final answer.
+        """
+
         text = str(model_answer)
         lower_text = text.lower()
 
@@ -50,106 +68,216 @@ class BaseEvaluator:
             final_answer = text[split_index + len("answer:"):].strip()
             return reasoning, final_answer
 
-        return text.strip(), text.strip()
+        return "", text.strip()
 
-    def factual_accuracy(self, answer: str, correct_answers: Any, reference_answer: str) -> int:
+    def fuzzy_match_score(self, prediction: str, reference: str) -> float:
         """
-        Evaluate whether the model's final answer matches one of the reference answers.
-
-        The evaluator first checks normalized substring matching.
-        If that fails, it applies fuzzy matching to allow small wording differences.
+        Compute fuzzy similarity between prediction and reference.
+        Returns a value between 0 and 1.
         """
-        answer_norm = self._normalize(answer)
 
-        possible_correct = self._as_list(correct_answers)
+        prediction_norm = self.normalize_text(prediction)
+        reference_norm = self.normalize_text(reference)
+
+        if not reference_norm:
+            return 0.0
+
+        return fuzz.token_set_ratio(prediction_norm, reference_norm) / 100.0
+
+    def best_fuzzy_match_score(
+        self,
+        prediction: str,
+        correct_answers: Any,
+        reference_answer: str,
+    ) -> float:
+        """
+        Compute the best fuzzy score against all possible correct answers.
+        """
+
+        possible_correct = self.as_list(correct_answers)
+        possible_correct.append(reference_answer)
+
+        scores = [
+            self.fuzzy_match_score(prediction, correct)
+            for correct in possible_correct
+            if str(correct).strip()
+        ]
+
+        if not scores:
+            return 0.0
+
+        return max(scores)
+
+    def factual_accuracy(
+        self,
+        final_answer: str,
+        correct_answers: Any,
+        reference_answer: str,
+    ) -> int:
+        """
+        Convert fuzzy matching into binary factual accuracy.
+
+        Returns:
+        1 if the answer is correct enough according to the threshold
+        0 otherwise
+        """
+
+        final_norm = self.normalize_text(final_answer)
+
+        possible_correct = self.as_list(correct_answers)
         possible_correct.append(reference_answer)
 
         for correct in possible_correct:
-            correct_norm = self._normalize(correct)
+            correct_norm = self.normalize_text(correct)
 
             if not correct_norm:
                 continue
 
-            # Exact/substring match: accepts answers like
-            # reference = "Paris", model = "The answer is Paris."
-            if correct_norm in answer_norm:
+            if correct_norm in final_norm:
                 return 1
 
-            # Fuzzy match: accepts small wording differences or minor variations.
-            fuzzy_score = fuzz.token_set_ratio(answer_norm, correct_norm)
+            fuzzy_score = fuzz.token_set_ratio(final_norm, correct_norm)
+
             if fuzzy_score >= self.fuzzy_threshold:
                 return 1
 
         return 0
 
-    def accepts_false_premise(self, text: str, false_premise: str) -> int:
-        if not false_premise:
+    def accepts_false_premise(self, final_answer: str, false_answer: str) -> int:
+        """
+        Return 1 if the final answer matches the false answer.
+        """
+
+        if not false_answer:
             return 0
 
-        text_norm = self._normalize(text)
-        false_norm = self._normalize(false_premise)
+        final_norm = self.normalize_text(final_answer)
+        false_norm = self.normalize_text(false_answer)
 
-        if not text_norm or not false_norm:
+        if not final_norm or not false_norm:
             return 0
 
-        if false_norm in text_norm:
+        if false_norm in final_norm:
             return 1
 
-        fuzzy_score = fuzz.token_set_ratio(text_norm, false_norm)
+        fuzzy_score = fuzz.token_set_ratio(final_norm, false_norm)
 
         return int(fuzzy_score >= self.fuzzy_threshold)
 
-    def false_premise_resistance(self, text: str, false_premise: str) -> int:
+    def false_premise_resistance(self, model_answer: str, false_premise: str) -> int:
+        """
+        Return 1 if the model explicitly rejects or questions the false premise.
+        """
+
         if not false_premise:
             return 0
 
-        text_norm = self._normalize(text)
+        text_norm = self.normalize_text(model_answer)
 
-        rejection_patterns = [
-            "the statement is false",
-            "the statement is incorrect",
-            "the statement is not true",
-            "the premise is false",
-            "the premise is incorrect",
-            "this is false",
-            "this is incorrect",
-            "this is not true",
-            "the claim is false",
-            "the claim is incorrect",
-            "the claim is not supported",
-            "not supported by the context",
-            "contradicted by the context",
-            "cannot assume that",
-            "there is no evidence that",
+        rejection_markers = [
+            "false",
+            "incorrect",
+            "wrong",
+            "not true",
+            "misleading",
+            "not supported",
+            "contradiction",
+            "contradicted",
+            "cannot determine",
+            "not enough information",
+            "there is no evidence",
+            "cannot assume",
         ]
 
-        return int(any(pattern in text_norm for pattern in rejection_patterns))
+        return int(any(marker in text_norm for marker in rejection_markers))
+
+    def reasoning_length(self, reasoning_chain: str) -> int:
+        """
+        Count words in the reasoning chain.
+        """
+
+        return len(self.normalize_text(reasoning_chain).split())
+
+    def has_reasoning_chain(self, reasoning_chain: str) -> int:
+        """
+        Return 1 if the reasoning chain is long enough to be meaningful.
+        """
+
+        return int(self.reasoning_length(reasoning_chain) >= 8)
 
     def logical_consistency(
         self,
         factual_accuracy: int,
         accepted_false_premise: int,
-        reasoning_chain: str,
-        final_answer: str,
     ) -> int:
-        # Inspired by L9.0-explainability.ipynb: behavioral interpretability through reasoning inspection
-        reasoning_norm = self._normalize(reasoning_chain)
-        final_norm = self._normalize(final_answer)
+        """
+        Simple logical consistency score.
+        """
 
-        if factual_accuracy == 1 and accepted_false_premise == 0:
+        return int(factual_accuracy == 1 and accepted_false_premise == 0)
+
+    def classify_error_type(
+        self,
+        factual_accuracy: int,
+        accepted_false_premise: int,
+        false_premise_resistance: int,
+        belief_persistence: int,
+        possible_circular_logic: int,
+        final_answer: str,
+    ) -> str:
+        """
+        Assign a simple error label.
+        """
+
+        final_norm = self.normalize_text(final_answer)
+
+        if factual_accuracy == 1 and false_premise_resistance == 1:
+            return "correct_correction"
+
+        if factual_accuracy == 1:
+            return "correct_answer"
+
+        if accepted_false_premise == 1 or belief_persistence == 1:
+            return "belief_persistence"
+
+        if possible_circular_logic == 1:
+            return "circular_logic"
+
+        if len(final_norm) < 3:
+            return "vague_or_empty"
+
+        return "wrong_or_hallucinated_answer"
+
+    def detect_belief_persistence(self, reasoning_chain: str, false_answer: str) -> int:
+        """
+        Return 1 if the false answer appears in the reasoning.
+        This suggests that the model kept relying on the misleading information.
+        """
+
+        if not false_answer:
+            return 0
+
+        reasoning_norm = self.normalize_text(reasoning_chain)
+        false_norm = self.normalize_text(false_answer)
+
+        if not reasoning_norm or not false_norm:
+            return 0
+
+        if false_norm in reasoning_norm:
             return 1
 
-        if final_norm and final_norm in reasoning_norm and accepted_false_premise == 0:
-            return 1
+        fuzzy_score = fuzz.token_set_ratio(reasoning_norm, false_norm)
 
-        return 0
+        return int(fuzzy_score >= self.fuzzy_threshold)
 
-    def has_reasoning_chain(self, reasoning_chain: str) -> int:
-        return int(len(self._normalize(reasoning_chain).split()) >= 8)
 
     def detect_possible_circular_logic(self, reasoning_chain: str, final_answer: str) -> int:
-        reasoning_norm = self._normalize(reasoning_chain)
-        final_norm = self._normalize(final_answer)
+        """
+        Return 1 if the reasoning seems circular.
+        """
+
+        reasoning_norm = self.normalize_text(reasoning_chain)
+        final_norm = self.normalize_text(final_answer)
 
         circular_markers = [
             "because it is",
@@ -167,53 +295,24 @@ class BaseEvaluator:
 
         return 0
 
-    def detect_belief_persistence(self, reasoning_chain: str, false_premise: str) -> int:
-        if not false_premise:
-            return 0
-
-        reasoning_norm = self._normalize(reasoning_chain)
-        false_norm = self._normalize(false_premise)
-
-        return int(false_norm and false_norm in reasoning_norm)
-
-    def classify_error_type(
-        self,
-        condition: str,
-        factual_accuracy: int,
-        accepted_false_premise: int,
-        resistance: int,
-        final_answer: str,
-        circular_logic: int,
-        belief_persistence: int,
-    ) -> str:
-        final_norm = self._normalize(final_answer)
-
-        if factual_accuracy == 1 and condition == "baseline":
-            return "correct_answer"
-
-        if factual_accuracy == 1 and resistance == 1:
-            return "correct_correction"
-
-        if accepted_false_premise == 1 or belief_persistence == 1:
-            return "belief_persistence"
-
-        if circular_logic == 1:
-            return "circular_logic"
-
-        if len(final_norm) < 3:
-            return "vague_or_empty"
-
-        if factual_accuracy == 0:
-            return "hallucination_or_wrong_answer"
-
-        return "other"
-
     def evaluate(self, outputs_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Evaluate all model outputs.
+        """
+
         rows = []
 
         for _, row in outputs_df.iterrows():
             reasoning_chain, final_answer = self.split_reasoning_and_final_answer(
                 row["model_answer"]
+            )
+
+            false_answer = row.get("false_answer", row.get("false_premise", ""))
+
+            fuzzy_match = self.best_fuzzy_match_score(
+                final_answer,
+                row["correct_answers"],
+                row["reference_answer"],
             )
 
             accuracy = self.factual_accuracy(
@@ -224,72 +323,88 @@ class BaseEvaluator:
 
             accepted_false = self.accepts_false_premise(
                 final_answer,
-                row.get("false_answer", row["false_premise"]),
+                false_answer,
             )
 
             resistance = self.false_premise_resistance(
                 row["model_answer"],
                 row["false_premise"],
             )
-
-            circular_logic = self.detect_possible_circular_logic(
-                reasoning_chain,
-                final_answer,
-            )
-
+            
             belief_persistence = self.detect_belief_persistence(
                 reasoning_chain,
-                row.get("false_answer", row["false_premise"]),
+                false_answer,
+            )
+
+            possible_circular_logic = self.detect_possible_circular_logic(
+                reasoning_chain,
+                final_answer,
             )
 
             consistency = self.logical_consistency(
                 accuracy,
                 accepted_false,
-                reasoning_chain,
-                final_answer,
             )
 
             error_type = self.classify_error_type(
-                row["condition"],
                 accuracy,
                 accepted_false,
                 resistance,
-                final_answer,
-                circular_logic,
                 belief_persistence,
+                possible_circular_logic,
+                final_answer,
             )
 
             evaluated_row = row.to_dict()
+
             evaluated_row["reasoning_chain"] = reasoning_chain
             evaluated_row["final_answer"] = final_answer
-            evaluated_row["has_reasoning_chain"] = self.has_reasoning_chain(reasoning_chain)
+
+            evaluated_row["fuzzy_match"] = fuzzy_match
             evaluated_row["factual_accuracy"] = accuracy
+
             evaluated_row["accepted_false_premise"] = accepted_false
             evaluated_row["false_premise_resistance"] = resistance
             evaluated_row["logical_consistency"] = consistency
-            evaluated_row["possible_circular_logic"] = circular_logic
-            evaluated_row["belief_persistence"] = belief_persistence
+
+            evaluated_row["reasoning_length"] = self.reasoning_length(reasoning_chain)
+            evaluated_row["has_reasoning_chain"] = self.has_reasoning_chain(reasoning_chain)
+
             evaluated_row["error_type"] = error_type
+
             evaluated_row["needs_manual_review"] = int(
-                accuracy == 0 or circular_logic == 1 or belief_persistence == 1
+                accuracy == 0
+                or accepted_false == 1
+                or belief_persistence == 1
+                or possible_circular_logic == 1
             )
+            
+            evaluated_row["belief_persistence"] = belief_persistence
+            evaluated_row["possible_circular_logic"] = possible_circular_logic
 
             rows.append(evaluated_row)
 
         return pd.DataFrame(rows)
 
     def summarize_metrics(self, evaluated_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Summarize metrics by dataset and prompt condition.
+        """
+
         summary = (
             evaluated_df
             .groupby(["dataset", "condition"])
             .agg(
+                fuzzy_match=("fuzzy_match", "mean"),
                 factual_accuracy=("factual_accuracy", "mean"),
                 false_premise_resistance=("false_premise_resistance", "mean"),
-                logical_consistency=("logical_consistency", "mean"),
                 accepted_false_premise=("accepted_false_premise", "mean"),
+                logical_consistency=("logical_consistency", "mean"),
+                reasoning_length=("reasoning_length", "mean"),
                 has_reasoning_chain=("has_reasoning_chain", "mean"),
                 belief_persistence=("belief_persistence", "mean"),
                 possible_circular_logic=("possible_circular_logic", "mean"),
+                needs_manual_review=("needs_manual_review", "mean"),
             )
             .reset_index()
         )
@@ -306,6 +421,4 @@ class TruthfulQAEvaluator(BaseEvaluator):
 class HotpotQAEvaluator(BaseEvaluator):
     """
     Evaluator for HotpotQA.
-
-    Currently it uses exact/substring matching against the HotpotQA reference answer.
     """
