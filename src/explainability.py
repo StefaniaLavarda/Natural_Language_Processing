@@ -101,11 +101,13 @@ class ProbabilityTracer:
         reference_answer = row["reference_answer"]
         false_answer = row.get("false_answer", row.get("false_premise", ""))
 
+        answer_prompt = prompt + "\nFinal answer:"
+
         top_tokens = self.model_runner.inspect_next_token_probabilities(
-            prompt=prompt,
+            prompt=answer_prompt,
             top_k=top_k,
         )
-
+        
         truthful_target_words = get_target_words(reference_answer)
         false_target_words = get_target_words(false_answer)
 
