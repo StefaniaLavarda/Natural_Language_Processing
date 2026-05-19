@@ -55,20 +55,36 @@ class TinyLlamaModelRunner:
         return "cpu"
 
     def generate(self, prompt: str) -> str:
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
+
+        formatted_prompt = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
         inputs = self.tokenizer(
-            prompt,
+            formatted_prompt,
             return_tensors="pt",
             truncation=True,
             max_length=self.config.max_input_tokens,
         ).to(self.device)
 
+        generation_kwargs = {
+            "max_new_tokens": self.config.max_new_tokens,
+            "do_sample": self.config.do_sample,
+            "pad_token_id": self.tokenizer.eos_token_id,
+        }
+
+        if self.config.do_sample:
+            generation_kwargs["temperature"] = self.config.temperature
+
         with torch.no_grad():
             output_ids = self.model.generate(
                 **inputs,
-                max_new_tokens=self.config.max_new_tokens,
-                do_sample=self.config.do_sample,
-                temperature=self.config.temperature if self.config.do_sample else None,
-                pad_token_id=self.tokenizer.eos_token_id,
+                **generation_kwargs,
             )
 
         input_length = inputs["input_ids"].shape[1]
