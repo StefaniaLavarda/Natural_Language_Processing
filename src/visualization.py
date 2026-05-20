@@ -175,6 +175,13 @@ class ResultsVisualizer:
 
         self.plot_metric_by_condition(
             summary_df,
+            "followed_output_format",
+            "Output Format Following by Prompt Condition",
+            "followed_output_format_by_condition.png",
+        )
+        
+        self.plot_metric_by_condition(
+            summary_df,
             "false_premise_resistance",
             "False Premise Resistance by Prompt Condition",
             "false_premise_resistance_by_condition.png",
@@ -197,3 +204,4 @@ class ResultsVisualizer:
                 probability_summary_df,
                 "truthful_preference_rate.png",
             )
+        
