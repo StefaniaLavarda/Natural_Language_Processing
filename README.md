@@ -16,7 +16,7 @@ Raw files must be placed in:
 
 The main research question is:
 
-**Can a small language model detect misleading information and keep its answers factually and logically consistent?**
+**How does a small instruction-tuned language model behave when exposed to false or misleading information during question answering?**
 
 ## Methodology
 
