@@ -24,8 +24,39 @@ class ResultsVisualizer:
         title: str,
         filename: str,
     ) -> None:
+        condition_order = [
+            "baseline",
+            "noisy",
+            "adversarial",
+            "self_verification",
+        ]
+
+        dataset_order = [
+            "truthfulqa",
+            "hotpotqa",
+        ]
+
         plot_df = summary_df.copy()
-        plot_df["label"] = plot_df["dataset"] + " | " + plot_df["condition"]
+
+        plot_df["dataset"] = pd.Categorical(
+            plot_df["dataset"],
+            categories=dataset_order,
+            ordered=True,
+        )
+
+        plot_df["condition"] = pd.Categorical(
+            plot_df["condition"],
+            categories=condition_order,
+            ordered=True,
+        )
+
+        plot_df = plot_df.sort_values(["dataset", "condition"])
+
+        plot_df["label"] = (
+            plot_df["dataset"].astype(str)
+            + " | "
+            + plot_df["condition"].astype(str)
+        )
 
         plt.figure(figsize=(12, 5))
         plt.bar(plot_df["label"], plot_df[metric])
@@ -71,8 +102,39 @@ class ResultsVisualizer:
         probability_summary_df: pd.DataFrame,
         filename: str,
     ) -> None:
+        condition_order = [
+            "baseline",
+            "noisy",
+            "adversarial",
+            "self_verification",
+        ]
+
+        dataset_order = [
+            "truthfulqa",
+            "hotpotqa",
+        ]
+
         plot_df = probability_summary_df.copy()
-        plot_df["label"] = plot_df["dataset"] + " | " + plot_df["condition"]
+
+        plot_df["dataset"] = pd.Categorical(
+            plot_df["dataset"],
+            categories=dataset_order,
+            ordered=True,
+        )
+
+        plot_df["condition"] = pd.Categorical(
+            plot_df["condition"],
+            categories=condition_order,
+            ordered=True,
+        )
+
+        plot_df = plot_df.sort_values(["dataset", "condition"])
+
+        plot_df["label"] = (
+            plot_df["dataset"].astype(str)
+            + " | "
+            + plot_df["condition"].astype(str)
+        )
 
         plt.figure(figsize=(12, 5))
         plt.bar(
@@ -120,9 +182,9 @@ class ResultsVisualizer:
 
         self.plot_metric_by_condition(
             summary_df,
-            "logical_consistency",
-            "Logical Consistency by Prompt Condition",
-            "logical_consistency_by_condition.png",
+            "accepted_false_premise",
+            "False Premise Acceptance by Prompt Condition",
+            "accepted_false_premise_by_condition.png",
         )
 
         self.plot_reasoning_failure_types(
