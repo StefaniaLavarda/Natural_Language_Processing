@@ -3,8 +3,7 @@ transformers
 pandas
 numpy
 matplotlib
-scikit-learn
 tqdm
 jupyter
 pyyaml
-ollama
+rapidfuzz
