@@ -351,6 +351,30 @@ class BaseEvaluator:
 
         return 0
 
+    def extract_reasoning_for_analysis(
+        self,
+        model_answer: str,
+        reasoning_chain: str,
+        final_answer: str,
+        followed_output_format: int,
+    ) -> Tuple[str, str]:
+        """
+        Return the text used for reasoning analysis and the extraction method.
+
+        If the model followed the requested format, use only the extracted reasoning.
+        If not, use the full model answer as a fallback explanation proxy.
+        """
+
+        if followed_output_format == 1 and str(reasoning_chain).strip():
+            return reasoning_chain, "explicit_reasoning_section"
+
+        model_answer_text = str(model_answer).strip()
+
+        if model_answer_text:
+            return model_answer_text, "full_output_fallback"
+
+        return "", "missing"
+    
     def evaluate(self, outputs_df: pd.DataFrame) -> pd.DataFrame:
         """
         Evaluate all model outputs.
@@ -366,6 +390,13 @@ class BaseEvaluator:
             followed_output_format = int(
                 "reasoning:" in str(row["model_answer"]).lower()
                 and "final answer:" in str(row["model_answer"]).lower()
+            )
+
+            reasoning_for_analysis, reasoning_extraction_method = self.extract_reasoning_for_analysis(
+                row["model_answer"],
+                reasoning_chain,
+                final_answer,
+                followed_output_format,
             )
 
             false_answer = row.get("false_answer", row.get("false_premise", ""))
@@ -393,12 +424,12 @@ class BaseEvaluator:
             )
             
             belief_persistence = self.detect_belief_persistence(
-                reasoning_chain,
+                reasoning_for_analysis,
                 false_answer,
             )
 
             possible_circular_logic = self.detect_possible_circular_logic(
-                reasoning_chain,
+                reasoning_for_analysis,
                 final_answer,
             )
 
@@ -429,8 +460,11 @@ class BaseEvaluator:
             evaluated_row["false_premise_resistance"] = resistance
             evaluated_row["logical_consistency"] = consistency
 
-            evaluated_row["reasoning_length"] = self.reasoning_length(reasoning_chain)
-            evaluated_row["has_reasoning_chain"] = self.has_reasoning_chain(reasoning_chain)
+            evaluated_row["reasoning_for_analysis"] = reasoning_for_analysis
+            evaluated_row["reasoning_extraction_method"] = reasoning_extraction_method
+
+            evaluated_row["reasoning_length"] = self.reasoning_length(reasoning_for_analysis)
+            evaluated_row["has_reasoning_chain"] = self.has_reasoning_chain(reasoning_for_analysis)
 
             evaluated_row["error_type"] = error_type
 
