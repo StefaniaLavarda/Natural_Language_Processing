@@ -21,7 +21,9 @@ class FailureAnalyzer:
 
     def detect_hallucination_propagation(self, row: pd.Series) -> int:
         # Inspired by L10.3-bias-completion-task.ipynb: false context may propagate into generated completions
-        reasoning = self._normalize(row.get("reasoning_chain", ""))
+        reasoning = self._normalize(
+            row.get("reasoning_for_analysis", row.get("reasoning_chain", ""))
+        )
         final_answer = self._normalize(row.get("final_answer", ""))
 
         is_wrong = row.get("factual_accuracy", 0) == 0
@@ -31,9 +33,10 @@ class FailureAnalyzer:
         return int(is_wrong and uses_false_premise and has_extra_reasoning and len(final_answer) > 0)
 
     def detect_self_correction_success(self, row: pd.Series) -> int:
-        # Inspired by L6.0-prompt-engineering.ipynb: self-verification prompts can trigger correction behavior
+        reasoning = row.get("reasoning_for_analysis", row.get("reasoning_chain", ""))
+
         text = self._normalize(
-            str(row.get("reasoning_chain", "")) + " " + str(row.get("final_answer", ""))
+            str(reasoning) + " " + str(row.get("final_answer", ""))
         )
 
         correction_markers = [
@@ -144,6 +147,9 @@ class FailureAnalyzer:
             "false_premise",
             "false_answer",
             "reasoning_chain",
+            "reasoning_for_analysis",
+            "reasoning_extraction_method",
+            "followed_output_format",
             "final_answer",
             "model_answer",
             "factual_accuracy",
