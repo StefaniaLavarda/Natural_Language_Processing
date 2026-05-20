@@ -119,8 +119,18 @@ class TinyLlamaModelRunner:
         Useful for probability-based explainability.
         """
 
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
+
+        formatted_prompt = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
         inputs = self.tokenizer(
-            prompt,
+            formatted_prompt,
             return_tensors="pt",
             truncation=True,
             max_length=self.config.max_input_tokens,
