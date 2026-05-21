@@ -2,8 +2,11 @@
 Module for qualitative failure analysis.
 
 This module automatically selects interesting model outputs and assigns
-heuristic failure labels. It also creates empty columns for optional manual
-inspection and notes.
+automatic failure labels. It identifies patterns such as belief persistence, hallucination propagation,
+circular logic, vague answers, and successful self-correction.
+
+The goal is to support qualitative inspection of the model's reasoning behavior
+under the four prompt conditions.
 """
 
 from typing import List
@@ -20,7 +23,6 @@ class FailureAnalyzer:
         return str(text).lower().strip()
 
     def detect_hallucination_propagation(self, row: pd.Series) -> int:
-        # Inspired by L10.3-bias-completion-task.ipynb: false context may propagate into generated completions
         reasoning = self._normalize(
             row.get("reasoning_for_analysis", row.get("reasoning_chain", ""))
         )

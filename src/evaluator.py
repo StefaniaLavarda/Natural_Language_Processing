@@ -1,5 +1,5 @@
 """
-Simple evaluation module.
+Evaluation module
 
 This module evaluates model answers using:
 1. fuzzy match as a gradual similarity score

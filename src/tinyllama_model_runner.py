@@ -55,6 +55,9 @@ class TinyLlamaModelRunner:
         return "cpu"
 
     def generate(self, prompt: str) -> str:
+        """
+        Generate one model answer from a single prompt using TinyLlama.
+        """
         messages = [
             {"role": "user", "content": prompt}
         ]
@@ -98,6 +101,9 @@ class TinyLlamaModelRunner:
         return answer.strip()
 
     def run_dataframe(self, prompts_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Run the model on all prompts in the DataFrame and store the generated answers.
+        """
         outputs: List[str] = []
 
         for prompt in tqdm(prompts_df["prompt"], desc="Generating answers"):

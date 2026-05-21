@@ -1,10 +1,5 @@
 """
 Command-line entry point for the project.
-
-Run with:
-
-python run_experiment.py
-python run_experiment.py --config config.yaml
 """
 
 import argparse

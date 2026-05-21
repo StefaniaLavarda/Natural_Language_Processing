@@ -42,7 +42,6 @@ class TruthfulQADataLoader:
         return [answer.strip() for answer in str(value).split(";") if answer.strip()]
 
     def load(self) -> pd.DataFrame:
-        # Inspired by L10.1-bias-bert-classifier.ipynb: use pandas DataFrames for clean experiment tables
         df = pd.read_csv(self.config.data_path)
 
         df = df.sample(

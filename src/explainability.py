@@ -1,5 +1,5 @@
 """
-Simple explainability module for TinyLlama.
+Explainability module for TinyLlama.
 
 This module uses top-k next-token probability tracing.
 
@@ -57,9 +57,6 @@ def extract_target_token_probability(
 def get_target_words(answer: str) -> List[str]:
     """
     Extract simple target words from an answer.
-
-    This works best for short factual answers such as names,
-    places, dates, yes/no answers, or short entities.
     """
 
     if not answer:
@@ -82,7 +79,7 @@ def get_target_words(answer: str) -> List[str]:
 
 class ProbabilityTracer:
     """
-    Simple probability tracer based only on top-k next-token probabilities.
+    Simple probability tracer based on top-k next-token probabilities.
     """
 
     def __init__(self, model_runner):

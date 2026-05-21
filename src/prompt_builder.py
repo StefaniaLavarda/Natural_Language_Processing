@@ -18,12 +18,6 @@ class BasePromptBuilder:
     """
     Shared prompt utilities.
     """
-    # def _format_reasoning_instruction(self) -> str:
-       #  return (
-        #    "Use exactly this format:\n"
-          #  "Reasoning: write one short sentence explaining the answer.\n"
-           # "Final answer: write only the final answer.\n" )
-
     def _format_reasoning_instruction(self) -> str:
         return (
             "You must answer using exactly two lines and no extra text:\n"

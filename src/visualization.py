@@ -76,7 +76,6 @@ class ResultsVisualizer:
         evaluated_df: pd.DataFrame,
         filename: str,
     ) -> None:
-        # Inspired by L10.0-biases.ipynb: categorize and visualize qualitative model failures
         failure_columns = [
             "belief_persistence",
             "possible_circular_logic",
@@ -151,7 +150,7 @@ class ResultsVisualizer:
         output_path = self.output_dir / filename
         plt.savefig(output_path)
         plt.close()
-    
+
 
     def create_all_plots(
         self,
@@ -165,7 +164,7 @@ class ResultsVisualizer:
             "Fuzzy Match by Prompt Condition",
             "fuzzy_match_by_condition.png",
         )
-        
+
         self.plot_metric_by_condition(
             summary_df,
             "factual_accuracy",
@@ -179,7 +178,7 @@ class ResultsVisualizer:
             "Output Format Following by Prompt Condition",
             "followed_output_format_by_condition.png",
         )
-        
+
         self.plot_metric_by_condition(
             summary_df,
             "false_premise_resistance",
@@ -204,4 +203,4 @@ class ResultsVisualizer:
                 probability_summary_df,
                 "truthful_preference_rate.png",
             )
-        
+

@@ -48,7 +48,6 @@ class Experiment:
     """
     Full experiment pipeline for the project.
 
-    The notebook should only demonstrate or inspect the results.
     The full reproducible experiment is run from this class.
     """
 
@@ -157,7 +156,7 @@ class Experiment:
 
         print("Prompt counts:")
         print(self.prompts_df.groupby(["dataset", "condition"]).size())
-        
+
     def run_model(self) -> None:
         """
         Run the selected language model on all prompts.
@@ -350,4 +349,3 @@ class Experiment:
         self.analyze_failures()
 
         print("Full experiment completed.")
-        
